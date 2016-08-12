@@ -5,6 +5,12 @@ import java.text.SimpleDateFormat
 import java.text.DateFormat
 import groovy.time.TimeCategory
 
+// configuration parameters
+def uri = "http://hvbrandenburg-handball.liga.nu/cgi-bin/WebObjects/nuLigaHBDE.woa/wa/groupPage?displayTyp=vorrunde&displayDetail=meetings&championship=SpB+C+-++2016+%2F+2017&group=204693"
+def team = "SV Motor Babelsberg"
+def calendarName = "Kreisliga_2016_17.ics"
+
+// create timezones
 TimeZone utcTimeZone = TimeZone.getTimeZone("UTC")
 isoDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmSS'Z'")
 isoDateFormat.setTimeZone(utcTimeZone)
@@ -13,14 +19,16 @@ TimeZone berlinTimeZone = TimeZone.getTimeZone("Europe/Berlin")
 berlinDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmSS")
 berlinDateFormat.setTimeZone(berlinTimeZone)
 
+// initialise parser
 def parser = new org.cyberneko.html.parsers.SAXParser()
-def page = new XmlSlurper(parser).parse('http://hvbrandenburg-handball.liga.nu/cgi-bin/WebObjects/nuLigaHBDE.woa/wa/teamPortrait?teamtable=1459848&pageState=vorrunde&championship=HVBrandenburg+15%2F16&group=197383')
+def page = new XmlSlurper(parser).parse(uri)
 
 def table = page.'**'.find {
     it.'@id'=='content-row2'
 }.TABLE.TBODY
 
 def games = []
+def previousDate = ""
 
 table.TR.each { row ->
     def game = [:]
@@ -30,7 +38,7 @@ table.TR.each { row ->
         if (entry.name() != "TH") {
             isValidGame = true
             switch (i) {
-                case 1 : game.date = entry.text().trim(); break;
+                case 1 : game.date = (entry.text().trim().length()>1 ? entry.text().trim() : previousDate); previousDate = game.date; break;
                 case 2 : game.time = entry.text().trim(); game.time = game.time.size() > 5 ? game.time.substring(0, 5) : game.time; game.description = entry.@title; break;
                 case 3 : game.location = "${entry.text().trim()}: ${entry.SPAN.@title}"; break;
                 case 4 : game.number = entry.text().trim(); break;
@@ -38,6 +46,10 @@ table.TR.each { row ->
                 case 6 : game.guest = entry.text().trim(); break;
             }
         }
+    }
+
+    if (isValidGame && team && !game.home.contains(team) && !game.guest.contains(team)) {
+        isValidGame = false
     }
 
     if (isValidGame && (game.home.contains("spielfrei") || game.guest.contains("spielfrei"))) {
@@ -76,7 +88,7 @@ def convertTime(time, isEnd) {
 
 def now = isoDateFormat.format(new Date())
 
-new File('Landesliga_Mitte_2015_16.ics').withWriter { out ->
+new File(calendarName).withWriter { out ->
     out.write("BEGIN:VCALENDAR\r\n")
     out.write("VERSION:2.0\r\n")
     out.write("PRODID:-//Ingmar Rötzler//NONSGML nuLiga Calendar//EN\r\n")
