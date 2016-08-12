@@ -6,11 +6,11 @@ import java.text.DateFormat
 import groovy.time.TimeCategory
 
 // configuration parameters
-def uri = "http://hvbrandenburg-handball.liga.nu/cgi-bin/WebObjects/nuLigaHBDE.woa/wa/groupPage?displayTyp=vorrunde&displayDetail=meetings&championship=SpB+C+-++2016+%2F+2017&group=204693"
+def uri = "http://hvbrandenburg-handball.liga.nu/cgi-bin/WebObjects/nuLigaHBDE.woa/wa/groupPage?displayTyp=vorrunde&displayDetail=meetings&championship=HVBrandenburg+16%2F17&group=204750"
 def team = "SV Motor Babelsberg"
-def calendarName = "Kreisliga_2016_17.ics"
+def calendarName = "Landesliga_Mitte_2016_17.ics"
 
-// create timezones
+// create date formats
 TimeZone utcTimeZone = TimeZone.getTimeZone("UTC")
 isoDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmSS'Z'")
 isoDateFormat.setTimeZone(utcTimeZone)
@@ -27,6 +27,7 @@ def table = page.'**'.find {
     it.'@id'=='content-row2'
 }.TABLE.TBODY
 
+// parse nuliga website
 def games = []
 def previousDate = ""
 
@@ -34,6 +35,7 @@ table.TR.each { row ->
     def game = [:]
     def isValidGame = false
 
+    // iterate over matches and parse entries
     row.children().eachWithIndex { entry, i ->
         if (entry.name() != "TH") {
             isValidGame = true
@@ -48,14 +50,17 @@ table.TR.each { row ->
         }
     }
 
+    // discard matches of other teams
     if (isValidGame && team && !game.home.contains(team) && !game.guest.contains(team)) {
         isValidGame = false
     }
 
+    // discard "spielfrei" matches
     if (isValidGame && (game.home.contains("spielfrei") || game.guest.contains("spielfrei"))) {
         isValidGame = false
     }
 
+    // convert time to correct format for ICS calendar
     if (isValidGame) {
         game.start = convertTime("${game.date} ${game.time}", false)
         game.end = convertTime("${game.date} ${game.time}", true)
@@ -64,16 +69,7 @@ table.TR.each { row ->
     }
 }
 
-println games[10].date
-println games[10].time
-println games[10].location
-println games[10].number
-println games[10].home
-println games[10].guest
-println games[10].start
-println games[10].end
-println games[10].description
-
+// helper function to convert time
 def convertTime(time, isEnd) {
     Date date = new SimpleDateFormat("dd.MM.yyyy HH:mm").parse(time)
 
@@ -88,6 +84,7 @@ def convertTime(time, isEnd) {
 
 def now = isoDateFormat.format(new Date())
 
+// write ICS calendar file
 new File(calendarName).withWriter { out ->
     out.write("BEGIN:VCALENDAR\r\n")
     out.write("VERSION:2.0\r\n")
@@ -129,3 +126,5 @@ new File(calendarName).withWriter { out ->
 
     out.write("END:VCALENDAR\r\n")
 }
+
+println "Calendar file '${calendarName}' created successfully for team ${team}."
