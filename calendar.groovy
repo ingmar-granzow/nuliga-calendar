@@ -6,17 +6,18 @@ import java.text.DateFormat
 import groovy.time.TimeCategory
 
 // configuration parameters
-def uri = "http://hvbrandenburg-handball.liga.nu/cgi-bin/WebObjects/nuLigaHBDE.woa/wa/groupPage?displayTyp=vorrunde&displayDetail=meetings&championship=HVBrandenburg+16%2F17&group=204750"
+def uri = "https://hvbrandenburg-handball.liga.nu/cgi-bin/WebObjects/nuLigaHBDE.woa/wa/teamPortrait?teamtable=1713873&pageState=vorrunde&championship=HVBrandenburg+2020+%2F+2021&group=263701"
 def team = "SV Motor Babelsberg"
-def calendarName = "Landesliga_Mitte_2016_17.ics"
+def league = "Landesliga Männer Mitte"
+def calendarName = "Landesliga_Männer_Mitte_2020_21.ics"
 
 // create date formats
 TimeZone utcTimeZone = TimeZone.getTimeZone("UTC")
-isoDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmSS'Z'")
+isoDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'")
 isoDateFormat.setTimeZone(utcTimeZone)
 
 TimeZone berlinTimeZone = TimeZone.getTimeZone("Europe/Berlin")
-berlinDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmSS")
+berlinDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss")
 berlinDateFormat.setTimeZone(berlinTimeZone)
 
 // initialise parser
@@ -114,9 +115,10 @@ new File(calendarName).withWriter { out ->
     games.each { game ->
         out.write("BEGIN:VEVENT\r\n")
         out.write("UID:${game.number}\r\n")
+        out.write("ORGANIZER:\r\n")
         out.write("LOCATION:${game.location}\r\n")
         out.write("SUMMARY:${game.home} - ${game.guest}\r\n")
-        out.write("DESCRIPTION:${game.description}\r\n")
+        out.write("DESCRIPTION:${[league, game.description.toString().replace(',', '\\,')].minus(['']).join('\\, ')}\r\n")
         out.write("CLASS:PUBLIC\r\n")
         out.write("DTSTART;TZID=Europe/Berlin:${game.start}\r\n")
         out.write("DTEND;TZID=Europe/Berlin:${game.end}\r\n")
